@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehiculo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 
 class VehiculoController extends Controller
@@ -115,5 +116,54 @@ class VehiculoController extends Controller
         $vehiculo->delete();
 
         return response()->json(['message' => 'Vehículo eliminado con éxito'], 200);
+    }
+
+    public function misVehiculos()
+    {
+        // Obtener el ID del usuario autenticado
+        $userId = Auth::id();
+
+        // Buscar los vehículos donde el user_id coincide con el ID del usuario autenticado
+        $vehiculos = Vehiculo::where('user_id', $userId)->get();
+
+        return response()->json($vehiculos);
+    }
+
+    /**
+     * Obtiene todos los vehículos del usuario autenticado mediante JWT
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserVehicles()
+    {
+        try {
+            // Obtener el usuario autenticado mediante JWT
+            $user = auth()->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no autenticado'
+                ], 401);
+            }
+
+            // Obtener los vehículos del usuario
+            $vehiculos = Vehiculo::where('user_id', $user->id)
+                ->with(['categoria', 'imagenes']) // Incluimos relaciones útiles
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $vehiculos,
+                'message' => 'Vehículos obtenidos exitosamente'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener los vehículos: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

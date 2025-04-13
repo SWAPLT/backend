@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehiculo;
-use Barryvdh\DomPDF\Facade\Pdf;  // Importar la librería DomPDF
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class VehiculoReporteController extends Controller
 {
-    // Función para generar un reporte de un vehículo específico en PDF
     public function generarReporte($id)
     {
         // Buscar el vehículo por ID
@@ -184,21 +183,11 @@ class VehiculoReporteController extends Controller
             </div>
         </body>
         </html>';
-        // Usar DomPDF para generar el PDF
+
+        // Generar el PDF
         $pdf = Pdf::loadHTML($html);
 
-        // Guardar el PDF en la carpeta storage/app
-        $path = storage_path('app/public/vehiculos_reportes'); // Ruta completa para guardar
-        if (!file_exists($path)) {
-            mkdir($path, 0777, true); // Crear la carpeta si no existe
-        }
-
-        $fileName = 'reporte_vehiculo_' . $vehiculo->id . '.pdf';
-        $pdf->save($path . '/' . $fileName); // Guardar el archivo
-
-        // Opcional: devolver la URL pública del archivo
-        $fileUrl = asset('storage/vehiculos_reportes/' . $fileName);
-
-        return response()->json(['message' => 'PDF generado y guardado exitosamente', 'url' => $fileUrl]);
+        // Devolver el PDF como respuesta de descarga
+        return $pdf->download('reporte_vehiculo_' . $vehiculo->id . '.pdf');
     }
 }
