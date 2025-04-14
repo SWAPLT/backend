@@ -45,30 +45,79 @@ class AuthController extends Controller
     // Enviar correo de verificación
     public function sendVerificationEmail($user)
     {
-        // Crear la URL con el código de verificación
-        $verificationUrl = url("/api/verify-email/{$user->verification_code}");
+        // URL base para la verificación web
+        $webVerificationUrl = url("/api/verify-email/{$user->verification_code}");
+        
+        // URL para deep linking (ajusta el esquema 'swaplt' según tu aplicación)
+        $deepLinkUrl = "swaplt://verify-email/{$user->verification_code}";
 
         // Crear el cuerpo del correo
         $emailBody = "
+        <!DOCTYPE html>
         <html>
         <head>
+            <meta charset='utf-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1'>
             <title>Verifica tu correo</title>
             <style>
-                body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; padding: 20px; }
-                .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
-                .btn { display: inline-block; padding: 10px 20px; margin-top: 20px; color: white; background-color: #007BFF; text-decoration: none; border-radius: 5px; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    background-color: #f4f4f4; 
+                    margin: 0; 
+                    padding: 20px;
+                }
+                .container { 
+                    background: white; 
+                    padding: 30px; 
+                    border-radius: 8px; 
+                    box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .btn { 
+                    display: inline-block; 
+                    padding: 12px 24px; 
+                    margin: 10px 0; 
+                    color: white; 
+                    background-color: #007BFF; 
+                    text-decoration: none; 
+                    border-radius: 5px;
+                    font-weight: bold;
+                }
+                .btn-mobile {
+                    background-color: #34A853;
+                }
+                .divider {
+                    margin: 20px 0;
+                    text-align: center;
+                    font-size: 14px;
+                    color: #666;
+                }
             </style>
         </head>
         <body>
             <div class='container'>
-                <h2>Hola {$user->name},</h2>
-                <p>Haz clic en el siguiente botón para verificar tu correo:</p>
-                <a href='{$verificationUrl}' class='btn'>Verificar Correo</a> <!-- Enlace de verificación corregido -->
-                <p>Si no solicitaste esto, ignora el correo.</p>
+                <h2>¡Bienvenido a SWAPLT, {$user->name}!</h2>
+                <p>Gracias por registrarte. Para completar tu registro, verifica tu correo electrónico:</p>
+                
+                <div style='text-align: center;'>
+                    <a href='{$deepLinkUrl}' class='btn btn-mobile'>
+                        Verificar en la App Móvil
+                    </a>
+                    
+                    <div class='divider'>- o -</div>
+                    
+                    <a href='{$webVerificationUrl}' class='btn'>
+                        Verificar en el Navegador
+                    </a>
+                </div>
+                
+                <p style='margin-top: 30px; font-size: 14px; color: #666;'>
+                    Si no solicitaste esta verificación, puedes ignorar este correo.
+                </p>
             </div>
         </body>
-        </html>
-    ";
+        </html>";
 
         // Enviar el correo
         Mail::to($user->email)->send(new class($emailBody) extends \Illuminate\Mail\Mailable {
@@ -81,12 +130,11 @@ class AuthController extends Controller
 
             public function build()
             {
-                return $this->subject('Verifica tu correo')
+                return $this->subject('Verifica tu cuenta de SWAPLT')
                     ->html($this->emailBody);
             }
         });
     }
-
 
     // Verificar email
     public function verifyEmail($verification_code)
@@ -94,12 +142,37 @@ class AuthController extends Controller
         $user = User::where('verification_code', $verification_code)->first();
 
         if (!$user) {
-            return response()->json(['error' => 'Código inválido'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Código de verificación inválido'
+            ], 400);
+        }
+
+        if ($user->email_verified_at !== null) {
+            return response()->json([
+                'success' => true,
+                'message' => 'El correo ya ha sido verificado anteriormente'
+            ]);
         }
 
         $user->markEmailAsVerified();
+        $user->verification_code = null; // Invalidar el código después de usarlo
+        $user->save();
 
-        return response()->json(['message' => 'Correo verificado con éxito.']);
+        // Determinar si la solicitud viene de la app móvil o web
+        $userAgent = request()->header('User-Agent');
+        $isFromMobile = str_contains(strtolower($userAgent), 'swaplt-app');
+
+        if ($isFromMobile) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Correo verificado con éxito',
+                'redirect_to' => 'swaplt://verification-success'
+            ]);
+        }
+
+        // Para solicitudes web, redirigir al frontend
+        return redirect('http://localhost:4200/profile');
     }
 
     // Iniciar sesión
