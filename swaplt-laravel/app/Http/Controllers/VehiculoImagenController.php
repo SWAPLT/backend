@@ -15,7 +15,7 @@ class VehiculoImagenController extends Controller
     public function store(Request $request, $vehiculoId)
     {
         $request->validate([
-            'imagen' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'imagenes.*' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
         $vehiculo = Vehiculo::find($vehiculoId);
@@ -23,16 +23,24 @@ class VehiculoImagenController extends Controller
             return response()->json(['message' => 'Vehículo no encontrado'], 404);
         }
 
-        $imagePath = $request->file('imagen')->store('vehiculos_imagenes', 'public');
+        $imagenesSubidas = [];
+        foreach ($request->file('imagenes') as $imagen) {
+            $imagePath = $imagen->store('vehiculos_imagenes', 'public');
 
-        $vehiculoImagen = new VehiculoImagen();
-        $vehiculoImagen->vehiculo_id = $vehiculoId;
-        $vehiculoImagen->imagen_url = $imagePath;
-        $vehiculoImagen->imagen_path = Storage::disk('public')->path($imagePath);
-        $vehiculoImagen->imagen_order = $request->input('imagen_order') ?? 1; // ✅ Valor por defecto si no se envía
-        $vehiculoImagen->save();
+            $vehiculoImagen = new VehiculoImagen();
+            $vehiculoImagen->vehiculo_id = $vehiculoId;
+            $vehiculoImagen->imagen_url = $imagePath;
+            $vehiculoImagen->imagen_path = Storage::disk('public')->path($imagePath);
+            $vehiculoImagen->imagen_order = count($imagenesSubidas) + 1;
+            $vehiculoImagen->save();
 
-        return response()->json(['message' => 'Imagen subida con éxito', 'imagen' => $vehiculoImagen], 201);
+            $imagenesSubidas[] = $vehiculoImagen;
+        }
+
+        return response()->json([
+            'message' => 'Imágenes subidas con éxito',
+            'imagenes' => $imagenesSubidas
+        ], 201);
     }
 
     // Función para obtener las imágenes de un vehículo
@@ -43,9 +51,67 @@ class VehiculoImagenController extends Controller
             return response()->json(['message' => 'Vehículo no encontrado'], 404);
         }
 
-        $imagenes = $vehiculo->imagenes; // Obtener las imágenes asociadas al vehículo (relación definida en el modelo Vehiculo)
+        $imagenes = $vehiculo->imagenes->map(function($imagen) {
+            return [
+                'id' => $imagen->id,
+                'url' => route('vehiculo.imagen', ['id' => $imagen->id]),
+                'orden' => $imagen->imagen_order
+            ];
+        });
 
         return response()->json($imagenes);
+    }
+
+    // Nuevo método para mostrar la imagen por ID
+    public function mostrarImagen($id)
+    {
+        $imagen = VehiculoImagen::find($id);
+        if (!$imagen) {
+            return response()->json(['message' => 'Imagen no encontrada'], 404);
+        }
+
+        // Obtener solo el nombre del archivo de la URL
+        $fileName = basename($imagen->imagen_url);
+        
+        // Construir las rutas posibles
+        $paths = [
+            storage_path('app/public/' . $fileName),
+            public_path('storage/' . $fileName),
+            storage_path('app/public/vehiculos_imagenes/' . $fileName)
+        ];
+
+        $path = null;
+        foreach ($paths as $possiblePath) {
+            if (file_exists($possiblePath)) {
+                $path = $possiblePath;
+                break;
+            }
+        }
+
+        if (!$path) {
+            return response()->json([
+                'message' => 'El archivo de imagen no existe',
+                'detalles' => [
+                    'rutas_probadas' => $paths,
+                    'nombre_archivo' => $fileName,
+                    'imagen_url_original' => $imagen->imagen_url
+                ]
+            ], 404);
+        }
+
+        try {
+            $file = file_get_contents($path);
+            $type = mime_content_type($path);
+
+            return response($file)
+                ->header('Content-Type', $type)
+                ->header('Content-Disposition', 'inline');
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al leer el archivo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // Función para eliminar una imagen de un vehículo
@@ -70,5 +136,30 @@ class VehiculoImagenController extends Controller
         $vehiculoImagen->delete();
 
         return response()->json(['message' => 'Imagen eliminada con éxito']);
+    }
+
+    /**
+     * Muestra todas las imágenes de un vehículo específico
+     */
+    public function mostrarImagenesVehiculo($vehiculo_id)
+    {
+        $imagenes = VehiculoImagen::where('vehiculo_id', $vehiculo_id)->get();
+        
+        if ($imagenes->isEmpty()) {
+            return response()->json(['message' => 'No se encontraron imágenes para este vehículo'], 404);
+        }
+
+        $imagenesHtml = '<html><body style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px;">';
+        
+        foreach ($imagenes as $imagen) {
+            $imagenesHtml .= sprintf(
+                '<div style="flex: 0 0 auto;"><img src="%s" style="max-width: 300px; height: auto;"></div>',
+                route('vehiculo.imagen', ['id' => $imagen->id])
+            );
+        }
+        
+        $imagenesHtml .= '</body></html>';
+
+        return response($imagenesHtml)->header('Content-Type', 'text/html');
     }
 }

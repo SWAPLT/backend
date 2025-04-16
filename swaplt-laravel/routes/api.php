@@ -59,7 +59,9 @@ Route::get('vehiculos/reporte/{id}', [VehiculoReporteController::class, 'generar
 //-------------------------------------   VEHICULO IMAGEN   -------------------------------------------//
 Route::post('vehiculos/{vehiculoId}/imagenes', [VehiculoImagenController::class, 'store']);
 Route::get('vehiculos/{vehiculoId}/imagenes', [VehiculoImagenController::class, 'show']);
+Route::get('vehiculos/imagenes/{id}', [VehiculoImagenController::class, 'mostrarImagen'])->name('vehiculo.imagen');
 Route::delete('vehiculos/{vehiculoId}/imagenes/{imagenId}', [VehiculoImagenController::class, 'destroy']);
+Route::get('vehiculos/{id}/todas-imagenes', [VehiculoImagenController::class, 'mostrarImagenesVehiculo'])->name('vehiculo.todas.imagenes');
 
 
 //-------------------------------------   MENSAJES   -------------------------------------------//

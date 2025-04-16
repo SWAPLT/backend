@@ -53,13 +53,35 @@ class VehiculoController extends Controller
     // Obtener un vehículo específico
     public function show($id)
     {
-        $vehiculo = Vehiculo::find($id);
+        $vehiculo = Vehiculo::with(['categoria', 'imagenes'])->find($id);
 
         if (!$vehiculo) {
             return response()->json(['message' => 'Vehículo no encontrado'], 404);
         }
 
-        return response()->json($vehiculo);
+        // Transformar las URLs de las imágenes para incluir la ruta completa y el base64
+        $vehiculo->imagenes->transform(function($imagen) {
+            $path = storage_path('app/public/' . $imagen->imagen_url);
+            $base64 = '';
+            
+            if (file_exists($path)) {
+                $type = mime_content_type($path);
+                $base64 = 'data:' . $type . ';base64,' . base64_encode(file_get_contents($path));
+            }
+
+            return [
+                'id' => $imagen->id,
+                'url' => route('vehiculo.imagen', ['id' => $imagen->id]),
+                'orden' => $imagen->imagen_order,
+                'vehiculo_id' => $imagen->vehiculo_id,
+                'preview_url' => $base64
+            ];
+        });
+
+        return response()->json([
+            'vehiculo' => $vehiculo,
+            'mensaje' => 'Vehículo encontrado con éxito'
+        ]);
     }
 
     // Actualizar un vehículo
