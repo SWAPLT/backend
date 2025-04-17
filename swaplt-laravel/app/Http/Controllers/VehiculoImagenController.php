@@ -162,4 +162,68 @@ class VehiculoImagenController extends Controller
 
         return response($imagenesHtml)->header('Content-Type', 'text/html');
     }
+
+    public function primeraImagen($vehiculoId)
+    {
+        $vehiculo = Vehiculo::find($vehiculoId);
+        if (!$vehiculo) {
+            return response()->json(['message' => 'Vehículo no encontrado'], 404);
+        }
+
+        $primeraImagen = $vehiculo->imagenes()
+            ->orderBy('imagen_order', 'asc')
+            ->first();
+
+        if (!$primeraImagen) {
+            // Si no hay imágenes, usar la imagen por defecto
+            $path = public_path('images/no-imagen.jpeg');
+            
+            if (!file_exists($path)) {
+                return response()->json([
+                    'message' => 'No hay imágenes y la imagen por defecto no existe',
+                    'detalles' => [
+                        'path_buscado' => $path
+                    ]
+                ], 404);
+            }
+
+            try {
+                $file = file_get_contents($path);
+                return response($file)
+                    ->header('Content-Type', 'image/jpeg')
+                    ->header('Content-Disposition', 'inline');
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'Error al leer la imagen por defecto',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        }
+
+        $path = storage_path('app/public/' . $primeraImagen->imagen_url);
+        
+        if (!file_exists($path)) {
+            return response()->json([
+                'message' => 'El archivo de imagen no existe',
+                'detalles' => [
+                    'path_buscado' => $path,
+                    'imagen_url' => $primeraImagen->imagen_url
+                ]
+            ], 404);
+        }
+
+        try {
+            $file = file_get_contents($path);
+            $type = mime_content_type($path);
+
+            return response($file)
+                ->header('Content-Type', $type)
+                ->header('Content-Disposition', 'inline');
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al leer el archivo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

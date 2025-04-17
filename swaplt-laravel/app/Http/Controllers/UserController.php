@@ -17,13 +17,16 @@ class UserController extends Controller
         return response()->json($users); // Devolver los usuarios en formato JSON
     }
 
-
-
     // Mostrar un usuario específico
     public function show($id)
     {
-        $user = User::findOrFail($id); // Buscar el usuario por ID
-        return response()->json($user); // Devolver el usuario en formato JSON
+        $cacheKey = "user_{$id}";
+        $user = cache()->remember($cacheKey, now()->addMinutes(30), function () use ($id) {
+            return User::select('id', 'name', 'email', 'rol', 'created_at', 'updated_at')
+                ->findOrFail($id);
+        });
+        
+        return response()->json($user);
     }
 
     // Crear un nuevo usuario
