@@ -18,7 +18,8 @@ class User extends Authenticatable implements JWTSubject
         'rol',
         'verification_code',
         'email_verified_at',
-        'reset_token',  // Asegúrate de agregar este campo
+        'reset_token',
+        'reset_token_expires_at',
     ];
 
     protected $hidden = [

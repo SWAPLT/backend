@@ -19,6 +19,7 @@ Route::middleware('auth:api')->get('/me', [AuthController::class, 'me']);
 Route::middleware('auth:api')->post('/logout', [AuthController::class, 'logout']);
 Route::post('refresh', [AuthController::class, 'refreshToken']);
 Route::post('password/reset-request', [AuthController::class, 'requestPasswordReset']); // Ruta para solicitar el restablecimiento de contraseña
+Route::get('password/reset/{token}', [AuthController::class, 'showResetForm']); // Nueva ruta para mostrar el formulario
 Route::post('password/reset/{token}', [AuthController::class, 'resetPassword']); // Ruta para restablecer la contraseña
 Route::put('profile', [AuthController::class, 'updateProfile'])->middleware('auth:api'); // Ruta para actualizar perfil
 

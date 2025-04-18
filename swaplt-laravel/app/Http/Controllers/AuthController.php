@@ -262,55 +262,106 @@ class AuthController extends Controller
     // Solicitar restablecimiento de contraseña
     public function requestPasswordReset(Request $request)
     {
-        // Validar que el correo electrónico sea válido
         $validator = Validator::make($request->all(), [
             'email' => 'required|email|exists:users,email',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => 'El correo no es válido o no existe.'], 400);
+            return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Buscar el usuario por su correo
         $user = User::where('email', $request->email)->first();
-
-        // Generar un token de restablecimiento único
-        $resetToken = bin2hex(random_bytes(16));
-
-        // Guardar el token en el usuario (o en una tabla de restablecimiento si prefieres)
+        $resetToken = bin2hex(random_bytes(32));
+        
+        // Guardar el token en la base de datos
         $user->reset_token = $resetToken;
+        $user->reset_token_expires_at = now()->addHours(1);
         $user->save();
 
-        // Enviar el correo con el enlace de restablecimiento
+        // Enviar correo con el formulario de restablecimiento
         $this->sendPasswordResetEmail($user, $resetToken);
 
-        return response()->json(['message' => 'Se ha enviado un correo para restablecer tu contraseña.']);
+        return response()->json([
+            'message' => 'Se ha enviado un correo con las instrucciones para restablecer tu contraseña'
+        ]);
     }
 
-    public function sendPasswordResetEmail($user, $resetToken)
+    private function sendPasswordResetEmail($user, $resetToken)
     {
         $resetUrl = url("/api/password/reset/{$resetToken}");
-
+        
         $emailBody = "
+        <!DOCTYPE html>
         <html>
         <head>
-            <title>Restablecer tu contraseña</title>
+            <meta charset='utf-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1'>
+            <title>Restablecer Contraseña</title>
             <style>
-                body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; padding: 20px; }
-                .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
-                .btn { display: inline-block; padding: 10px 20px; margin-top: 20px; color: white; background-color: #007BFF; text-decoration: none; border-radius: 5px; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    background-color: #f4f4f4; 
+                    margin: 0; 
+                    padding: 20px;
+                }
+                .container { 
+                    background: white; 
+                    padding: 30px; 
+                    border-radius: 8px; 
+                    box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+                    max-width: 600px;
+                    margin: 0 auto;
+                }
+                .btn { 
+                    display: inline-block; 
+                    padding: 12px 24px; 
+                    margin: 10px 0; 
+                    color: white; 
+                    background-color: #007BFF; 
+                    text-decoration: none; 
+                    border-radius: 5px;
+                    font-weight: bold;
+                }
+                .token-box {
+                    background-color: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                    word-break: break-all;
+                    font-family: monospace;
+                }
             </style>
         </head>
         <body>
             <div class='container'>
-                <h2>Hola {$user->name},</h2>
-                <p>Haz clic en el siguiente botón para restablecer tu contraseña:</p>
-                <a href='{$resetUrl}' class='btn'>Restablecer Contraseña</a>
-                <p>Si no solicitaste esto, ignora el correo.</p>
+                <h2>Restablecer Contraseña</h2>
+                <p>Hola {$user->name},</p>
+                <p>Hemos recibido una solicitud para restablecer tu contraseña. Tu token de restablecimiento es:</p>
+                
+                <div class='token-box'>
+                    {$resetToken}
+                </div>
+                
+                <p>Puedes usar este token de dos formas:</p>
+                
+                <ol>
+                    <li>Haz clic en el siguiente botón para restablecer tu contraseña:</li>
+                </ol>
+                
+                <div style='text-align: center;'>
+                    <a href='{$resetUrl}' class='btn'>Restablecer Contraseña</a>
+                </div>
+                
+                <ol start='2'>
+                    <li>O copia y pega el token en la aplicación cuando te lo solicite.</li>
+                </ol>
+                
+                <p style='margin-top: 30px; font-size: 14px; color: #666;'>
+                    Este token expirará en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.
+                </p>
             </div>
         </body>
-        </html>
-    ";
+        </html>";
 
         Mail::to($user->email)->send(new class($emailBody) extends \Illuminate\Mail\Mailable {
             public $emailBody;
@@ -322,36 +373,53 @@ class AuthController extends Controller
 
             public function build()
             {
-                return $this->subject('Restablecer tu contraseña')
+                return $this->subject('Restablecer tu contraseña de SWAPLT')
                     ->html($this->emailBody);
             }
         });
     }
 
+    public function showResetForm($token)
+    {
+        $user = User::where('reset_token', $token)
+            ->where('reset_token_expires_at', '>', now())
+            ->first();
+
+        if (!$user) {
+            return redirect('http://localhost:4200/reset-password?error=invalid_token');
+        }
+
+        return redirect("http://localhost:4200/reset-password?token={$token}");
+    }
+
     public function resetPassword(Request $request, $token)
     {
-        // Validar las contraseñas
         $validator = Validator::make($request->all(), [
             'password' => 'required|string|min:6|confirmed',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => 'Las contraseñas no coinciden o son demasiado cortas.'], 400);
+            return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Buscar al usuario con el token de restablecimiento
-        $user = User::where('reset_token', $token)->first();
+        $user = User::where('reset_token', $token)
+            ->where('reset_token_expires_at', '>', now())
+            ->first();
 
         if (!$user) {
-            return response()->json(['error' => 'Token inválido o ha expirado.'], 400);
+            return response()->json([
+                'error' => 'El enlace de restablecimiento no es válido o ha expirado'
+            ], 400);
         }
 
-        // Actualizar la contraseña del usuario
         $user->password = Hash::make($request->password);
-        $user->reset_token = null; // Limpiar el token de restablecimiento
+        $user->reset_token = null;
+        $user->reset_token_expires_at = null;
         $user->save();
 
-        return response()->json(['message' => 'Contraseña restablecida con éxito.']);
+        return response()->json([
+            'message' => 'Contraseña restablecida con éxito'
+        ]);
     }
 
     public function updateProfile(Request $request)
