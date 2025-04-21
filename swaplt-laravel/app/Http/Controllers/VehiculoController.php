@@ -46,7 +46,7 @@ class VehiculoController extends Controller
     // Obtener todos los vehículos
     public function index()
     {
-        $vehiculos = Vehiculo::all();
+        $vehiculos = Vehiculo::paginate(10);
         return response()->json($vehiculos);
     }
 
