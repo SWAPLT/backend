@@ -188,4 +188,53 @@ class VehiculoController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Busca vehículos por marca y/o modelo
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function search(Request $request)
+    {
+        try {
+            $query = Vehiculo::query();
+
+            // Si se proporciona un término de búsqueda general
+            if ($request->has('search')) {
+                $searchTerm = $request->search;
+                
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('marca', 'LIKE', "%{$searchTerm}%")
+                      ->orWhere('modelo', 'LIKE', "%{$searchTerm}%");
+                });
+            }
+
+            // Si se proporciona específicamente una marca
+            if ($request->has('marca')) {
+                $query->where('marca', 'LIKE', "%{$request->marca}%");
+            }
+
+            // Si se proporciona específicamente un modelo
+            if ($request->has('modelo')) {
+                $query->where('modelo', 'LIKE', "%{$request->modelo}%");
+            }
+
+            $vehiculos = $query->with(['categoria', 'imagenes'])
+                             ->orderBy('created_at', 'desc')
+                             ->paginate(10);
+
+            return response()->json([
+                'success' => true,
+                'data' => $vehiculos,
+                'message' => 'Búsqueda realizada con éxito'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al realizar la búsqueda: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

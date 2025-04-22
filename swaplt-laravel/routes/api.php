@@ -32,6 +32,7 @@ Route::delete('/users/{id}', [UserController::class, 'destroy']); // Eliminar un
 
 //----------------------------------------   VEHICULOS   -----------------------------------------//
 Route::get('vehiculos', [VehiculoController::class, 'index']);
+Route::get('vehiculos/search', [VehiculoController::class, 'search']);
 Route::get('vehiculos/{id}', [VehiculoController::class, 'show']);
 Route::post('vehiculos', [VehiculoController::class, 'store']);
 Route::middleware('auth:api')->put('/vehiculos/{id}', [VehiculoController::class, 'update']);
