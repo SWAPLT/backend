@@ -13,7 +13,6 @@ use App\Http\Controllers\FavoritoController;
 //----------------------------------------   AUTH   ---------------------------------------------//
 Route::post('register', [AuthController::class, 'register']);
 Route::get('/verify-email/{verification_code}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
-Route::post('/verify-email/{verification_code}', [AuthController::class, 'verifyEmail']); // Soporte para verificación desde la app móvil
 Route::post('login', [AuthController::class, 'login']);
 Route::middleware('auth:api')->get('/me', [AuthController::class, 'me']);
 Route::middleware('auth:api')->post('/logout', [AuthController::class, 'logout']);

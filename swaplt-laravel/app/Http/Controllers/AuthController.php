@@ -47,9 +47,6 @@ class AuthController extends Controller
     {
         // URL base para la verificación web
         $webVerificationUrl = url("/api/verify-email/{$user->verification_code}");
-        
-        // URL para deep linking (ajusta el esquema 'swaplt' según tu aplicación)
-        $deepLinkUrl = "swaplt://verify-email/{$user->verification_code}";
 
         // Crear el cuerpo del correo
         $emailBody = "
@@ -84,15 +81,6 @@ class AuthController extends Controller
                     border-radius: 5px;
                     font-weight: bold;
                 }
-                .btn-mobile {
-                    background-color: #34A853;
-                }
-                .divider {
-                    margin: 20px 0;
-                    text-align: center;
-                    font-size: 14px;
-                    color: #666;
-                }
             </style>
         </head>
         <body>
@@ -101,12 +89,6 @@ class AuthController extends Controller
                 <p>Gracias por registrarte. Para completar tu registro, verifica tu correo electrónico:</p>
                 
                 <div style='text-align: center;'>
-                    <a href='{$deepLinkUrl}' class='btn btn-mobile'>
-                        Verificar en la App Móvil
-                    </a>
-                    
-                    <div class='divider'>- o -</div>
-                    
                     <a href='{$webVerificationUrl}' class='btn'>
                         Verificar en el Navegador
                     </a>
@@ -159,19 +141,7 @@ class AuthController extends Controller
         $user->verification_code = null; // Invalidar el código después de usarlo
         $user->save();
 
-        // Determinar si la solicitud viene de la app móvil o web
-        $userAgent = request()->header('User-Agent');
-        $isFromMobile = str_contains(strtolower($userAgent), 'swaplt-app');
-
-        if ($isFromMobile) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Correo verificado con éxito',
-                'redirect_to' => 'swaplt://verification-success'
-            ]);
-        }
-
-        // Para solicitudes web, redirigir al frontend
+        // Redirigir al frontend
         return redirect('http://localhost:4200/profile');
     }
 
