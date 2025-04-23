@@ -237,4 +237,101 @@ class VehiculoController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Filtra vehículos según múltiples criterios
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function filter(Request $request)
+    {
+        try {
+            $query = Vehiculo::query();
+
+            // Filtro por rango de precio
+            if ($request->has('precio_min') && $request->has('precio_max')) {
+                $query->whereBetween('precio', [$request->precio_min, $request->precio_max]);
+            } elseif ($request->has('precio_min')) {
+                $query->where('precio', '>=', $request->precio_min);
+            } elseif ($request->has('precio_max')) {
+                $query->where('precio', '<=', $request->precio_max);
+            }
+
+            // Filtro por año
+            if ($request->has('anio_min') && $request->has('anio_max')) {
+                $query->whereBetween('anio', [$request->anio_min, $request->anio_max]);
+            } elseif ($request->has('anio_min')) {
+                $query->where('anio', '>=', $request->anio_min);
+            } elseif ($request->has('anio_max')) {
+                $query->where('anio', '<=', $request->anio_max);
+            }
+
+            // Filtro por kilometraje máximo
+            if ($request->has('kilometraje_max')) {
+                $query->where('kilometraje', '<=', $request->kilometraje_max);
+            }
+
+            // Filtro por estado (nuevo/usado)
+            if ($request->has('estado')) {
+                $query->where('estado', $request->estado);
+            }
+
+            // Filtro por transmisión
+            if ($request->has('transmision')) {
+                $query->where('transmision', $request->transmision);
+            }
+
+            // Filtro por tipo de combustible
+            if ($request->has('tipo_combustible')) {
+                $query->where('tipo_combustible', $request->tipo_combustible);
+            }
+
+            // Filtro por marca
+            if ($request->has('marca')) {
+                $query->where('marca', 'LIKE', "%{$request->marca}%");
+            }
+
+            // Filtro por modelo
+            if ($request->has('modelo')) {
+                $query->where('modelo', 'LIKE', "%{$request->modelo}%");
+            }
+
+            // Filtro por color
+            if ($request->has('color')) {
+                $query->where('color', 'LIKE', "%{$request->color}%");
+            }
+
+            // Filtro por ubicación
+            if ($request->has('ubicacion')) {
+                $query->where('ubicacion', 'LIKE', "%{$request->ubicacion}%");
+            }
+
+            // Filtro por número de puertas
+            if ($request->has('numero_puertas')) {
+                $query->where('numero_puertas', $request->numero_puertas);
+            }
+
+            // Filtro por vehículo libre de accidentes
+            if ($request->has('vehiculo_libre_accidentes')) {
+                $query->where('vehiculo_libre_accidentes', $request->vehiculo_libre_accidentes);
+            }
+
+            $vehiculos = $query->with(['categoria', 'imagenes'])
+                             ->orderBy('created_at', 'desc')
+                             ->paginate(10);
+
+            return response()->json([
+                'success' => true,
+                'data' => $vehiculos,
+                'message' => 'Filtrado realizado con éxito'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al realizar el filtrado: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
