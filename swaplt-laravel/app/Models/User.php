@@ -47,4 +47,16 @@ class User extends Authenticatable implements JWTSubject
     {
         return []; // Aquí puedes agregar cualquier dato adicional que desees incluir en el JWT
     }
+
+    // Valoraciones recibidas
+    public function valoracionesRecibidas()
+    {
+        return $this->hasMany(\App\Models\Valoracion::class, 'receptor_id');
+    }
+
+    // Valoraciones enviadas
+    public function valoracionesEnviadas()
+    {
+        return $this->hasMany(\App\Models\Valoracion::class, 'emisor_id');
+    }
 }

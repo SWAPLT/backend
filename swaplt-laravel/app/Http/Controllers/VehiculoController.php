@@ -334,4 +334,82 @@ class VehiculoController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Obtiene todos los vehículos de un usuario específico junto con su información completa
+     *
+     * @param int $userId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserVehiclesById($userId)
+    {
+        try {
+            // Verificar si el usuario existe y obtener toda su información
+            $user = \App\Models\User::select('id', 'name', 'email', 'rol', 'created_at', 'updated_at')
+                ->find($userId);
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado'
+                ], 404);
+            }
+
+            // Obtener los vehículos del usuario con todas sus relaciones
+            $vehiculos = Vehiculo::where('user_id', $userId)
+                ->with([
+                    'categoria',
+                    'imagenes' => function($query) {
+                        $query->orderBy('imagen_order', 'asc');
+                    }
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            // Transformar las URLs de las imágenes para incluir la ruta completa y el base64
+            $vehiculos->transform(function($vehiculo) {
+                $vehiculo->imagenes->transform(function($imagen) {
+                    $path = storage_path('app/public/' . $imagen->imagen_url);
+                    $base64 = '';
+                    
+                    if (file_exists($path)) {
+                        $type = mime_content_type($path);
+                        $base64 = 'data:' . $type . ';base64,' . base64_encode(file_get_contents($path));
+                    }
+
+                    return [
+                        'id' => $imagen->id,
+                        'url' => route('vehiculo.imagen', ['id' => $imagen->id]),
+                        'orden' => $imagen->imagen_order,
+                        'vehiculo_id' => $imagen->vehiculo_id,
+                        'preview_url' => $base64
+                    ];
+                });
+                return $vehiculo;
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'usuario' => [
+                        'id' => $user->id,
+                        'nombre' => $user->name,
+                        'email' => $user->email,
+                        'rol' => $user->rol,
+                        'fecha_registro' => $user->created_at,
+                        'ultima_actualizacion' => $user->updated_at
+                    ],
+                    'vehiculos' => $vehiculos,
+                    'total_vehiculos' => $vehiculos->count()
+                ],
+                'message' => 'Información del usuario y vehículos obtenida exitosamente'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener la información: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

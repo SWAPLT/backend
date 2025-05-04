@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VehiculoController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\FavoritoController;
+use App\Http\Controllers\ValoracionController;
 
 //----------------------------------------   AUTH   ---------------------------------------------//
 Route::post('register', [AuthController::class, 'register']);
@@ -28,7 +29,7 @@ Route::get('/users/{id}', [UserController::class, 'show']); // Mostrar un usuari
 Route::post('/users', [UserController::class, 'store']); // Crear un nuevo usuario
 Route::put('/users/{id}', [UserController::class, 'update']); // Actualizar un usuario
 Route::delete('/users/{id}', [UserController::class, 'destroy']); // Eliminar un usuario
-
+Route::get('/users/{userId}/vehiculos', [VehiculoController::class, 'getUserVehiclesById']);
 //----------------------------------------   VEHICULOS   -----------------------------------------//
 Route::get('vehiculos', [VehiculoController::class, 'index']);
 Route::get('vehiculos/search', [VehiculoController::class, 'search']);
@@ -72,3 +73,7 @@ Route::post('/mensajes', [MensajeController::class, 'store']);
 Route::get('/mensajes/{emisor_id}/{receptor_id}', [MensajeController::class, 'index']);
 Route::patch('/mensajes/{id}/leido', [MensajeController::class, 'marcarLeido']);
 Route::delete('/mensajes/{id}', [MensajeController::class, 'destroy']);
+
+//----------------------------- VALORACIONES ENTRE USUARIOS -----------------------------//
+Route::middleware('auth:api')->post('/valoraciones', [ValoracionController::class, 'store']); // Valorar usuario
+Route::get('/users/{userId}/valoraciones', [ValoracionController::class, 'valoracionesUsuario']); // Ver valoraciones de un usuario
