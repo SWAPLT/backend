@@ -10,6 +10,7 @@ use App\Http\Controllers\VehiculoController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\FavoritoController;
 use App\Http\Controllers\ValoracionController;
+use App\Http\Controllers\UserBlockController;
 
 //----------------------------------------   AUTH   ---------------------------------------------//
 Route::post('register', [AuthController::class, 'register']);
@@ -77,3 +78,16 @@ Route::delete('/mensajes/{id}', [MensajeController::class, 'destroy']);
 //----------------------------- VALORACIONES ENTRE USUARIOS -----------------------------//
 Route::middleware('auth:api')->post('/valoraciones', [ValoracionController::class, 'store']); // Valorar usuario
 Route::get('/users/{userId}/valoraciones', [ValoracionController::class, 'valoracionesUsuario']); // Ver valoraciones de un usuario
+
+//-----------------------------   BLOQUEOS A USUARIOS   -------------------------------------------//
+Route::middleware(['auth:api'])->group(function () {
+    Route::get('/usuarios/bloqueos-todos', [UserBlockController::class, 'index']);
+    Route::post('/usuarios/{usuario}/bloquear', [UserBlockController::class, 'bloquear']);
+    Route::post('/usuarios/{usuario}/desbloquear', [UserBlockController::class, 'desbloquear']);
+    Route::get('/usuarios/bloqueados', [UserBlockController::class, 'usuariosBloqueados']);
+    Route::get('/usuarios/que-me-bloquearon', [UserBlockController::class, 'usuariosQueMeBloquearon']);
+    Route::get('/usuarios/{usuario}/verificar-bloqueo', [UserBlockController::class, 'verificarBloqueo']);
+});
+
+// Ruta para desbloquear sin autenticación
+Route::post('/usuarios/desbloquear-admin', [UserBlockController::class, 'desbloquearUsuario']);

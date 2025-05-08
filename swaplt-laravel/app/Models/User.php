@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -58,5 +59,56 @@ class User extends Authenticatable implements JWTSubject
     public function valoracionesEnviadas()
     {
         return $this->hasMany(\App\Models\Valoracion::class, 'emisor_id');
+    }
+
+    // Relaciones para bloqueos
+    public function bloqueosRealizados(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocker_id');
+    }
+
+    public function bloqueosRecibidos(): HasMany
+    {
+        return $this->hasMany(UserBlock::class, 'blocked_id');
+    }
+
+    // Métodos para manejar bloqueos
+    public function bloquearUsuario(User $usuario, ?string $razon = null): UserBlock
+    {
+        return $this->bloqueosRealizados()->create([
+            'blocked_id' => $usuario->id,
+            'razon' => $razon
+        ]);
+    }
+
+    public function desbloquearUsuario(User $usuario): bool
+    {
+        return $this->bloqueosRealizados()
+            ->where('blocked_id', $usuario->id)
+            ->delete();
+    }
+
+    public function estaBloqueadoPor(User $usuario): bool
+    {
+        return $this->bloqueosRecibidos()
+            ->where('blocker_id', $usuario->id)
+            ->exists();
+    }
+
+    public function haBloqueadoA(User $usuario): bool
+    {
+        return $this->bloqueosRealizados()
+            ->where('blocked_id', $usuario->id)
+            ->exists();
+    }
+
+    public function usuariosBloqueados()
+    {
+        return User::whereIn('id', $this->bloqueosRealizados()->pluck('blocked_id'));
+    }
+
+    public function usuariosQueMeBloquearon()
+    {
+        return User::whereIn('id', $this->bloqueosRecibidos()->pluck('blocker_id'));
     }
 }

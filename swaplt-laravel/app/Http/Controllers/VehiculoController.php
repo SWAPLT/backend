@@ -43,10 +43,28 @@ class VehiculoController extends Controller
         ], 201);
     }
 
+    // Método auxiliar para filtrar vehículos de usuarios bloqueados
+    private function filtrarVehiculosBloqueados($query)
+    {
+        $user = auth()->user();
+        if ($user) {
+            // Excluir vehículos de usuarios que me han bloqueado
+            $usuariosQueMeBloquearon = $user->usuariosQueMeBloquearon()->pluck('id');
+            // Excluir vehículos de usuarios que he bloqueado
+            $usuariosQueHeBloqueado = $user->usuariosBloqueados()->pluck('id');
+            
+            $query->whereNotIn('user_id', $usuariosQueMeBloquearon)
+                  ->whereNotIn('user_id', $usuariosQueHeBloqueado);
+        }
+        return $query;
+    }
+
     // Obtener todos los vehículos
     public function index()
     {
-        $vehiculos = Vehiculo::paginate(10);
+        $query = Vehiculo::query();
+        $query = $this->filtrarVehiculosBloqueados($query);
+        $vehiculos = $query->paginate(10);
         return response()->json($vehiculos);
     }
 
@@ -59,7 +77,18 @@ class VehiculoController extends Controller
             return response()->json(['message' => 'Vehículo no encontrado'], 404);
         }
 
-        // Transformar las URLs de las imágenes para incluir la ruta completa y el base64
+        // Verificar si el usuario está bloqueado
+        $user = auth()->user();
+        if ($user) {
+            $usuarioBloqueado = $user->usuariosQueMeBloquearon()->where('id', $vehiculo->user_id)->exists() ||
+                               $user->usuariosBloqueados()->where('id', $vehiculo->user_id)->exists();
+            
+            if ($usuarioBloqueado) {
+                return response()->json(['message' => 'No tienes acceso a este vehículo'], 403);
+            }
+        }
+
+        // Transformar las URLs de las imágenes
         $vehiculo->imagenes->transform(function($imagen) {
             $path = storage_path('app/public/' . $imagen->imagen_url);
             $base64 = '';
@@ -199,23 +228,20 @@ class VehiculoController extends Controller
     {
         try {
             $query = Vehiculo::query();
+            $query = $this->filtrarVehiculosBloqueados($query);
 
-            // Si se proporciona un término de búsqueda general
             if ($request->has('search')) {
                 $searchTerm = $request->search;
-                
                 $query->where(function($q) use ($searchTerm) {
                     $q->where('marca', 'LIKE', "%{$searchTerm}%")
                       ->orWhere('modelo', 'LIKE', "%{$searchTerm}%");
                 });
             }
 
-            // Si se proporciona específicamente una marca
             if ($request->has('marca')) {
                 $query->where('marca', 'LIKE', "%{$request->marca}%");
             }
 
-            // Si se proporciona específicamente un modelo
             if ($request->has('modelo')) {
                 $query->where('modelo', 'LIKE', "%{$request->modelo}%");
             }
@@ -248,6 +274,7 @@ class VehiculoController extends Controller
     {
         try {
             $query = Vehiculo::query();
+            $query = $this->filtrarVehiculosBloqueados($query);
 
             // Filtro por rango de precio
             if ($request->has('precio_min') && $request->has('precio_max')) {
@@ -344,18 +371,32 @@ class VehiculoController extends Controller
     public function getUserVehiclesById($userId)
     {
         try {
-            // Verificar si el usuario existe y obtener toda su información
-            $user = \App\Models\User::select('id', 'name', 'email', 'rol', 'created_at', 'updated_at')
+            $user = auth()->user();
+            if ($user) {
+                // Verificar si el usuario está bloqueado
+                $usuarioBloqueado = $user->usuariosQueMeBloquearon()->where('id', $userId)->exists() ||
+                                   $user->usuariosBloqueados()->where('id', $userId)->exists();
+                
+                if ($usuarioBloqueado) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No tienes acceso a los vehículos de este usuario'
+                    ], 403);
+                }
+            }
+
+            // Verificar si el usuario existe
+            $usuario = \App\Models\User::select('id', 'name', 'email', 'rol', 'created_at', 'updated_at')
                 ->find($userId);
             
-            if (!$user) {
+            if (!$usuario) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Usuario no encontrado'
                 ], 404);
             }
 
-            // Obtener los vehículos del usuario con todas sus relaciones
+            // Obtener los vehículos del usuario
             $vehiculos = Vehiculo::where('user_id', $userId)
                 ->with([
                     'categoria',
@@ -366,7 +407,7 @@ class VehiculoController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Transformar las URLs de las imágenes para incluir la ruta completa y el base64
+            // Transformar las URLs de las imágenes
             $vehiculos->transform(function($vehiculo) {
                 $vehiculo->imagenes->transform(function($imagen) {
                     $path = storage_path('app/public/' . $imagen->imagen_url);
@@ -392,12 +433,12 @@ class VehiculoController extends Controller
                 'success' => true,
                 'data' => [
                     'usuario' => [
-                        'id' => $user->id,
-                        'nombre' => $user->name,
-                        'email' => $user->email,
-                        'rol' => $user->rol,
-                        'fecha_registro' => $user->created_at,
-                        'ultima_actualizacion' => $user->updated_at
+                        'id' => $usuario->id,
+                        'nombre' => $usuario->name,
+                        'email' => $usuario->email,
+                        'rol' => $usuario->rol,
+                        'fecha_registro' => $usuario->created_at,
+                        'ultima_actualizacion' => $usuario->updated_at
                     ],
                     'vehiculos' => $vehiculos,
                     'total_vehiculos' => $vehiculos->count()
