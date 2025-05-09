@@ -11,6 +11,7 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\FavoritoController;
 use App\Http\Controllers\ValoracionController;
 use App\Http\Controllers\UserBlockController;
+use App\Http\Controllers\GoogleAuthController;
 
 //----------------------------------------   AUTH   ---------------------------------------------//
 Route::post('register', [AuthController::class, 'register']);
@@ -23,6 +24,10 @@ Route::post('password/reset-request', [AuthController::class, 'requestPasswordRe
 Route::get('password/reset/{token}', [AuthController::class, 'showResetForm']); // Nueva ruta para mostrar el formulario
 Route::post('password/reset/{token}', [AuthController::class, 'resetPassword']); // Ruta para restablecer la contraseña
 Route::put('profile', [AuthController::class, 'updateProfile'])->middleware('auth:api'); // Ruta para actualizar perfil
+
+// Rutas para autenticación con Google
+Route::get('auth/google', [GoogleAuthController::class, 'redirectToGoogle']);
+Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
 
 //----------------------------------------   USERS   ---------------------------------------------//
 Route::get('/users', [UserController::class, 'index']); // Mostrar todos los usuarios

@@ -17,6 +17,8 @@ return new class extends Migration {
             $table->string('verification_code')->nullable(); // Código único de verificación
             $table->rememberToken(); // Token para recordar sesión
             $table->string('reset_token')->nullable(); // Campo para almacenar el token de restablecimiento
+            $table->string('google_id')->nullable(); // ID de Google
+            $table->string('avatar')->nullable(); // URL del avatar
             $table->timestamps(); // created_at y updated_at
         });
     }

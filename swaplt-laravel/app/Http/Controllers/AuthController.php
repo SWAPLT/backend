@@ -192,6 +192,7 @@ class AuthController extends Controller
             'email' => $user->email,
             'rol' => $user->rol, // Asegúrate de devolver el rol aquí
             'email_verified_at' => $user->email_verified_at,
+            'avatar' => $user->avatar,
         ]);
     }
 
