@@ -31,11 +31,14 @@ Route::post('/users', [UserController::class, 'store']); // Crear un nuevo usuar
 Route::put('/users/{id}', [UserController::class, 'update']); // Actualizar un usuario
 Route::delete('/users/{id}', [UserController::class, 'destroy']); // Eliminar un usuario
 Route::get('/users/{userId}/vehiculos', [VehiculoController::class, 'getUserVehiclesById']);
+
+
 //----------------------------------------   VEHICULOS   -----------------------------------------//
 Route::get('vehiculos', [VehiculoController::class, 'index']);
 Route::get('vehiculos/search', [VehiculoController::class, 'search']);
 Route::get('vehiculos/filter', [VehiculoController::class, 'filter']);
 Route::get('vehiculos/{id}', [VehiculoController::class, 'show']);
+Route::get('vehiculos/{id}/estadisticas-visitas', [VehiculoController::class, 'estadisticasVisitas']);
 Route::post('vehiculos', [VehiculoController::class, 'store']);
 Route::middleware('auth:api')->put('/vehiculos/{id}', [VehiculoController::class, 'update']);
 Route::delete('vehiculos/{id}', [VehiculoController::class, 'destroy']);

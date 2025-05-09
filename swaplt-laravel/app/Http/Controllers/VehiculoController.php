@@ -88,6 +88,13 @@ class VehiculoController extends Controller
             }
         }
 
+        // Registrar la visita
+        $vehiculo->visitas()->create([
+            'user_id' => $user ? $user->id : null,
+            'ip_address' => request()->ip(),
+            'fecha_visita' => now()
+        ]);
+
         // Transformar las URLs de las imágenes
         $vehiculo->imagenes->transform(function($imagen) {
             $path = storage_path('app/public/' . $imagen->imagen_url);
@@ -450,6 +457,66 @@ class VehiculoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener la información: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene las estadísticas de visitas de un vehículo
+     *
+     * @param int $id
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function estadisticasVisitas($id, Request $request)
+    {
+        try {
+            $vehiculo = Vehiculo::find($id);
+            
+            if (!$vehiculo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vehículo no encontrado'
+                ], 404);
+            }
+
+            // Verificar si el usuario es el propietario del vehículo
+            $user = auth()->user();
+            if (!$user || $user->id !== $vehiculo->user_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para ver estas estadísticas'
+                ], 403);
+            }
+
+            $dias = $request->get('dias', 30);
+            $estadisticas = $vehiculo->getEstadisticasVisitas($dias);
+
+            // Formatear las fechas para el frontend
+            $estadisticas->transform(function($item) {
+                return [
+                    'fecha' => $item->fecha,
+                    'total_visitas' => $item->total_visitas
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'vehiculo_id' => $vehiculo->id,
+                    'marca' => $vehiculo->marca,
+                    'modelo' => $vehiculo->modelo,
+                    'estadisticas' => $estadisticas,
+                    'total_visitas' => $estadisticas->sum('total_visitas'),
+                    'promedio_diario' => $estadisticas->avg('total_visitas')
+                ],
+                'message' => 'Estadísticas obtenidas con éxito'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener las estadísticas: ' . $e->getMessage()
             ], 500);
         }
     }

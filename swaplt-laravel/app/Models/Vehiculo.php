@@ -69,4 +69,21 @@ class Vehiculo extends Model
     {
         return $this->belongsToMany(User::class, 'favoritos');
     }
+
+    // Relación con las visitas
+    public function visitas()
+    {
+        return $this->hasMany(VehiculoVisita::class);
+    }
+
+    // Método para obtener estadísticas de visitas
+    public function getEstadisticasVisitas($dias = 30)
+    {
+        return $this->visitas()
+            ->selectRaw('DATE(fecha_visita) as fecha, COUNT(*) as total_visitas')
+            ->where('fecha_visita', '>=', now()->subDays($dias))
+            ->groupBy('fecha')
+            ->orderBy('fecha')
+            ->get();
+    }
 }
