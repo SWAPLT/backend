@@ -13,12 +13,10 @@ class UserSeeder extends Seeder
         $user = new User();
         $user->name = "Administrador";
         $user->email = "admin@gmail.com";
-        $user->password = Hash::make("admin1234");
+        $user->password = Hash::make("Jecato23102005..G");
         $user->rol = "admin";
         $user->email_verified_at = "2025-03-25";
 
         $user->save();
-
-        User::factory()->count(10)->create(); // Crea 10 usuarios
     }
 }

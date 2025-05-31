@@ -8,6 +8,7 @@ use Laravel\Socialite\Facades\Socialite;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Exception;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class GoogleAuthController extends Controller
 {
@@ -21,7 +22,12 @@ class GoogleAuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
             
-            // Buscar si el usuario ya existe
+            // Validación de email verificado
+            if (!$googleUser->user['email_verified']) {
+                return redirect()->away(env('FRONTEND_URL') . '/login?error=email_not_verified');
+            }
+            
+            // Búsqueda/Creación de usuario
             $user = User::where('google_id', $googleUser->id)
                        ->orWhere('email', $googleUser->email)
                        ->first();
@@ -59,6 +65,7 @@ class GoogleAuthController extends Controller
             return redirect()->away(env('FRONTEND_URL') . '/auth/google/callback?token=' . $token);
 
         } catch (Exception $e) {
+            Log::error('Error en autenticación Google: ' . $e->getMessage());
             if ($request->header('User-Agent') && str_contains($request->header('User-Agent'), 'Postman')) {
                 return response()->json([
                     'error' => 'Error en la autenticación con Google',

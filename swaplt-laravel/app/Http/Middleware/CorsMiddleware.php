@@ -12,7 +12,7 @@ class CorsMiddleware
         // Manejar preflight OPTIONS
         if ($request->isMethod('OPTIONS')) {
             return response()->json('OK', 200, [
-                'Access-Control-Allow-Origin' => 'https://angular.swaplt-tfc.duckdns.org', // Cambia esto si tu frontend está en otro origen
+                'Access-Control-Allow-Origin' => env('FRONTEND_URL', 'http://localhost:4200'),
                 'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
             ]);
@@ -23,11 +23,10 @@ class CorsMiddleware
 
         // Aquí defines los headers que necesitas:
         $response->withHeaders([
-            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Origin' => env('FRONTEND_URL', 'http://localhost:4200'),
             'Access-Control-Allow-Methods' => '*',
             'Access-Control-Allow-Headers' => '*',
-            // Opcional: Si necesitas cookies o auth:
-            // 'Access-Control-Allow-Credentials' => 'true',
+            'Access-Control-Allow-Credentials' => 'true',
         ]);
 
         return $response;
